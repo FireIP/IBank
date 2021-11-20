@@ -6,6 +6,7 @@ import "./IPriceOracle.sol";
 contract BlankBank is IBank {
     
     mapping(address => Account) public accountMap;
+    mapping(address => Account) private loanAccount;
     
     constructor() {
         
@@ -39,6 +40,16 @@ contract BlankBank is IBank {
             
             accountMap[msg.sender].deposit = accountMap[msg.sender].deposit + _price;
             emit Deposit(msg.sender, token, amount);
+            
+            uint256 _currentBlock = block.number;
+            
+            uint256 _blockInterval =  _currentBlock - accountMap[msg.sender].lastInterestBlock;
+            accountMap[msg.sender].lastInterestBlock = _currentBlock;
+            
+            uint256 _interestRate = ((_blockInterval / 100) * 3) / 100;
+            
+            uint256 _interest = accountMap[msg.sender].deposit * _interestRate;
+            accountMap[msg.sender].interest = _interest;
             
             return true;
         } else {
@@ -88,6 +99,9 @@ contract BlankBank is IBank {
                 
                 emit Withdraw(msg.sender, token, amount);
             
+                _interest = accountMap[msg.sender].deposit * _interestRate;
+                accountMap[msg.sender].interest = _interest;
+            
                 return _price;
             } else {
                 return 0;
@@ -111,6 +125,37 @@ contract BlankBank is IBank {
      */
     function borrow(address token, uint256 amount) external override returns (uint256) {
         
+        if (amount == 0) {
+            if (token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
+                
+                uint256 _currentBlock = block.number;
+            
+                uint256 _blockInterval =  _currentBlock - loanAccount[msg.sender].lastInterestBlock;
+                loanAccount[msg.sender].lastInterestBlock = _currentBlock;
+                
+                uint256 _interestRate = ((_blockInterval / 100) * 5) / 100;
+                
+                uint256 _interest = loanAccount[msg.sender].deposit * _interestRate;
+                loanAccount[msg.sender].interest = _interest;
+                
+                uint256 _money = accountMap[msg.sender].deposit + accountMap[msg.sender].interest;
+                uint256 _loaned_money = loanAccount[msg.sender].deposit + loanAccount[msg.sender].interest;
+                
+                uint256 _result = (_money + _money / 2) - _loaned_money;
+                
+                loanAccount[msg.sender].deposit = _loaned_money;
+                loanAccount[msg.sender].deposit += _result;
+                
+                loanAccount[msg.sender].interest = 0;
+                
+                
+                msg.sender.transfer(_result);
+                
+                
+                
+                return _result;
+            }
+        }
     }
      
     /*
