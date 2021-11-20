@@ -37,11 +37,9 @@ contract BlankBank is IBank {
                 _price = amount * _oracle.getVirtualPrice(token);
             }
             
-            emit Received(msg.sender, amount);
             accountMap[msg.sender].deposit = accountMap[msg.sender].deposit + _price;
-            
-            
             emit Deposit(msg.sender, token, amount);
+            
             return true;
         } else {
             return false;
@@ -84,7 +82,6 @@ contract BlankBank is IBank {
             }
             
             if (accountMap[msg.sender].deposit >= _price) {
-                
                 
                 accountMap[msg.sender].deposit = accountMap[msg.sender].deposit - _price;
                 msg.sender.transfer(amount);
