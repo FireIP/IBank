@@ -8,8 +8,12 @@ contract BlankBank is IBank {
     mapping(address => Account) public accountMap;
     mapping(address => Account) private loanAccount;
     
-    constructor() {
-        
+    address priceAdress;
+    address hakToken;
+    
+    constructor(address _priceOracle, address _hakToken) {
+    	priceAdress = _priceOracle;
+    	hakToken = _hakToken;
     }
     
     /*
@@ -22,7 +26,7 @@ contract BlankBank is IBank {
      * @return - true if the deposit was successful, otherwise revert.
      */
     
-    address priceAdress = 0xc3F639B8a6831ff50aD8113B438E2Ef873845552;
+    
     
     event Received(address, uint);
     
@@ -33,9 +37,13 @@ contract BlankBank is IBank {
             uint256 _price;
             if (token == 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE) {
                 _price = amount;
-            } else {
+            } else if (token == hakToken) {
                 IPriceOracle _oracle = IPriceOracle(priceAdress);
                 _price = amount * _oracle.getVirtualPrice(token);
+                _price = _price / 10000000000000000;
+            }
+            else {
+            return false;
             }
             
             accountMap[msg.sender].deposit = accountMap[msg.sender].deposit + _price;
