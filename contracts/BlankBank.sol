@@ -8,9 +8,7 @@ contract BlankBank is IBank {
     mapping(address => Account) public accountMap;
     mapping(address => Account) private loanAccount;
     
-    constructor() {
-        
-    }
+    constructor(address _priceOracle, address _hakToken) {}
     
     /*
      * The purpose of this function is to allow end-users to deposit a given 
@@ -141,6 +139,10 @@ contract BlankBank is IBank {
                 uint256 _money = accountMap[msg.sender].deposit + accountMap[msg.sender].interest;
                 uint256 _loaned_money = loanAccount[msg.sender].deposit + loanAccount[msg.sender].interest;
                 
+                IPriceOracle _oracle = IPriceOracle(priceAdress);
+                
+                uint256 _loaned_money_ETH = _loaned_money  * _oracle.getVirtualPrice();
+                
                 uint256 _result = (_money + _money / 2) - _loaned_money;
                 
                 loanAccount[msg.sender].deposit = _loaned_money;
@@ -151,10 +153,49 @@ contract BlankBank is IBank {
                 
                 msg.sender.transfer(_result);
                 
+                uint256 _ratio = _money / (loanAccount[msg.sender].deposit);
+                emit Borrow(msg.sender, token, amount, _ratio);
                 
-                
-                return _result;
+                return _ratio;
             }
+        } else {
+                uint256 _currentBlock = block.number;
+            
+                uint256 _blockInterval =  _currentBlock - loanAccount[msg.sender].lastInterestBlock;
+                
+                
+                uint256 _interestRate = ((_blockInterval / 100) * 5) / 100;
+                
+                uint256 _interest = loanAccount[msg.sender].deposit * _interestRate;
+                loanAccount[msg.sender].interest = _interest;
+                
+                uint256 _money = accountMap[msg.sender].deposit + accountMap[msg.sender].interest;
+                uint256 _loaned_money = loanAccount[msg.sender].deposit + loanAccount[msg.sender].interest;
+                
+                uint256 request = amount;
+                
+                if (_money * 10000 / (_loaned_money + request) >= 15000) {
+                    uint256 _result = (_money + _money / 2) - _loaned_money;
+                
+                    loanAccount[msg.sender].deposit = _loaned_money;
+                    loanAccount[msg.sender].deposit += request;
+                    
+                    loanAccount[msg.sender].interest = 0;
+                    loanAccount[msg.sender].lastInterestBlock = _currentBlock;
+                    
+                    msg.sender.transfer(_result);
+                    
+                    uint256 _ratio = _money / (loanAccount[msg.sender].deposit);
+                    emit Borrow(msg.sender, token, amount, _ratio);
+                    
+                    return _ratio;
+                } else {
+                    
+                    uint256 _ratio = _money / (loanAccount[msg.sender].deposit + loanAccount[msg.sender].interest);
+                    
+                    return _ratio;
+                }
+                
         }
     }
      
